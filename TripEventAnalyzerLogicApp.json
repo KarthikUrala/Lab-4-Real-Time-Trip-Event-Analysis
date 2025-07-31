@@ -1,0 +1,144 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "When_events_are_available_in_Event_Hub": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['eventhubs']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent('trip-events')}/events/batch/head",
+                    "queries": {
+                        "consumerGroupName": "$Default",
+                        "maximumEventsCount": 10
+                    }
+                },
+                "recurrence": {
+                    "interval": 3,
+                    "frequency": "Minute"
+                },
+                "splitOn": "@triggerBody()"
+            }
+        },
+        "actions": {
+            "HTTP": {
+                "type": "Http",
+                "inputs": {
+                    "uri": "https://ural0001-bydpeycybvf9a8bb.canadacentral-01.azurewebsites.net/api/analyze_trip",
+                    "method": "POST",
+                    "headers": {
+                        "Content-Type \n": "application/json"
+                    },
+                    "body": "\n@{triggerBody()\n}"
+                },
+                "runAfter": {},
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                }
+            },
+            "For_each": {
+                "type": "Foreach",
+                "foreach": "@body('HTTP')\n",
+                "actions": {
+                    "Condition": {
+                        "type": "If",
+                        "expression": {
+                            "and": [
+                                {
+                                    "equals": [
+                                        "@items('For_each')?['isInteresting']\n",
+                                        true
+                                    ]
+                                }
+                            ]
+                        },
+                        "actions": {
+                            "Post_adaptive_card_and_wait_for_a_response": {
+                                "type": "ApiConnectionWebhook",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['teams']['connectionId']"
+                                        }
+                                    },
+                                    "body": {
+                                        "notificationUrl": "@listCallbackUrl()",
+                                        "body": {
+                                            "messageBody": "{\n  \"type\": \"AdaptiveCard\",\n  \"body\": [\n    {\n      \"type\": \"TextBlock\",\n      \"text\": \"🚨 Interesting Trip Detected\",\n      \"weight\": \"Bolder\",\n      \"size\": \"Large\",\n      \"color\": \"Attention\"\n    },\n    {\n      \"type\": \"FactSet\",\n      \"facts\": [\n        { \"title\": \"Vendor\", \"value\": \"@{items('For_each')?['vendorID']}\" },\n        { \"title\": \"Distance (mi)\", \"value\": \"@{items('For_each')?['tripDistance']}\" },\n        { \"title\": \"Passengers\", \"value\": \"@{items('For_each')?['passengerCount']}\" },\n        { \"title\": \"Payment\", \"value\": \"@{items('For_each')?['paymentType']}\" },\n        { \"title\": \"Insights\", \"value\": \"@{join(items('For_each')?['insights'], ', ')}\" }\n      ]\n    }\n  ],\n  \"actions\": [],\n  \"version\": \"1.2\"\n}\n",
+                                            "updateMessage": "Thanks for your response!",
+                                            "recipient": {
+                                                "recipient": "19:80e23d2a38924ebb86c2ae8cc77efdad@thread.v2"
+                                            }
+                                        }
+                                    },
+                                    "path": "/v1.0/teams/conversation/gatherinput/poster/Flow bot/location/@{encodeURIComponent('Group chat')}/$subscriptions"
+                                }
+                            }
+                        },
+                        "else": {
+                            "actions": {
+                                "Post_adaptive_card_and_wait_for_a_response_1": {
+                                    "type": "ApiConnectionWebhook",
+                                    "inputs": {
+                                        "host": {
+                                            "connection": {
+                                                "name": "@parameters('$connections')['teams']['connectionId']"
+                                            }
+                                        },
+                                        "body": {
+                                            "notificationUrl": "@listCallbackUrl()",
+                                            "body": {
+                                                "messageBody": "{\n  \"type\": \"AdaptiveCard\",\n  \"body\": [\n    {\n      \"type\": \"TextBlock\",\n      \"text\": \"✅ Trip Analyzed - No Issues\",\n      \"weight\": \"Bolder\",\n      \"size\": \"Large\",\n      \"color\": \"Good\"\n    },\n    {\n      \"type\": \"FactSet\",\n      \"facts\": [\n        { \"title\": \"Vendor\", \"value\": \"@{items('For_each')?['vendorID']}\" },\n        { \"title\": \"Distance (mi)\", \"value\": \"@{items('For_each')?['tripDistance']}\" },\n        { \"title\": \"Passengers\", \"value\": \"@{items('For_each')?['passengerCount']}\" },\n        { \"title\": \"Payment\", \"value\": \"@{items('For_each')?['paymentType']}\" },\n        { \"title\": \"Summary\", \"value\": \"@{items('For_each')?['summary']}\" }\n      ]\n    }\n  ],\n  \"actions\": [],\n  \"version\": \"1.2\"\n}\n",
+                                                "updateMessage": "Thanks for your response!",
+                                                "recipient": {
+                                                    "recipient": "19:80e23d2a38924ebb86c2ae8cc77efdad@thread.v2"
+                                                }
+                                            }
+                                        },
+                                        "path": "/v1.0/teams/conversation/gatherinput/poster/Flow bot/location/@{encodeURIComponent('Group chat')}/$subscriptions"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "HTTP": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {
+                "eventhubs": {
+                    "id": "/subscriptions/ea36a0b1-bb84-4726-81cf-554dc165c4a6/providers/Microsoft.Web/locations/canadacentral/managedApis/eventhubs",
+                    "connectionId": "/subscriptions/ea36a0b1-bb84-4726-81cf-554dc165c4a6/resourceGroups/Ramy/providers/Microsoft.Web/connections/eventhubs",
+                    "connectionName": "eventhubs"
+                },
+                "teams": {
+                    "id": "/subscriptions/ea36a0b1-bb84-4726-81cf-554dc165c4a6/providers/Microsoft.Web/locations/canadacentral/managedApis/teams",
+                    "connectionId": "/subscriptions/ea36a0b1-bb84-4726-81cf-554dc165c4a6/resourceGroups/Ramy/providers/Microsoft.Web/connections/teams",
+                    "connectionName": "teams"
+                }
+            }
+        }
+    }
+}
