@@ -24,7 +24,7 @@ The solution:
 - **Microsoft Teams:** Receives alerts for interesting or normal trips.
 
 ### **Architecture Diagram**
-<img width="711" height="710" alt="Image" src="https://github.com/user-attachments/assets/4535b517-92b7-413a-8992-1cec0ae75135" />
+<img width="1308" height="477" alt="Image" src="https://github.com/user-attachments/assets/12f638f2-1ede-41ba-8a11-50b678993bb0" />
 
 ---
 
