@@ -78,7 +78,7 @@ The solution:
 - Adaptive Cards improve visibility in Teams
 - Real-time event-driven architecture reduces manual monitoring
 
-# Youtube Video- 
+## Youtube Video- https://www.youtube.com/watch?v=_qEdl872kic&ab_channel=KarthikRaghavendraUrala
 
 ### Sample Output
 ```json
